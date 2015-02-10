@@ -1,10 +1,37 @@
 # -*- coding: utf-8 -*-
 from django.conf import settings
-from oauth_tokens.api import ApiAbstractBase, Singleton
 from oauth_tokens.models import AccessToken
+import requests
+
+from oauth_tokens.api import ApiAbstractBase, Singleton
 from vkontakte import VKError as VkontakteError, API
 
+
 __all__ = ['api_call', 'VkontakteError']
+
+SECURE_API_URL = 'https://api.vk.com/method/'
+NO_TOKEN_METHODS = [
+    'users.get',
+    'users.search',
+    'users.getFollowers',
+
+    'groups.get',
+    'groups.getById',
+    'groups.getMembers',
+
+    'wall.get',
+    'wall.getById',
+    'wall.search',
+    'wall.getReposts',
+    'wall.getComments',
+
+    'photos.get',
+    'photos.getAlbums',
+    'photos.getProfile',
+    'photos.getById',
+
+    'likes.getList',
+]
 
 
 class VkontakteApi(ApiAbstractBase):
@@ -82,6 +109,12 @@ class VkontakteApi(ApiAbstractBase):
         return self.sleep_repeat_call(*args, **kwargs)
 
 
-def api_call(*args, **kwargs):
-    api = VkontakteApi()
-    return api.call(*args, **kwargs)
+
+def api_call(method, *args, **kwargs):
+    if method in NO_TOKEN_METHODS:
+        url = SECURE_API_URL + method # 'https://api.vk.com/method/users.get'
+        r = requests.get(url, params=kwargs)
+        return r.json()["response"]
+    else:
+        api = VkontakteApi()
+        return api.call(method, *args, **kwargs)
