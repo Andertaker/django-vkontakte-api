@@ -39,30 +39,31 @@ class VkontakteApi(ApiAbstractBase):
     __metaclass__ = Singleton
 
     provider = 'vkontakte'
+    provider_social_auth = 'vk-oauth2'
     error_class = VkontakteError
     request_timeout = getattr(settings, 'VKONTAKTE_API_REQUEST_TIMEOUT', 1)
 
     def get_consistent_token(self):
         return getattr(settings, 'VKONTAKTE_API_ACCESS_TOKEN', None)
 
-    def get_tokens(self, **kwargs):
-        return AccessToken.objects.filter_active_tokens_of_provider(self.provider, **kwargs)
-
-    def get_api(self, **kwargs):
-        return API(token=self.get_token(**kwargs))
+    def get_api(self, token):
+        return API(token=token)
 
     def get_api_response(self, *args, **kwargs):
         return self.api.get(self.method, timeout=self.request_timeout, *args, **kwargs)
 
     def handle_error_code_5(self, e, *args, **kwargs):
-        self.logger.info("Updating vkontakte access token, recursion count: %d" % self.recursion_count)
+        if self.user:
+            raise e
+        self.logger.info("Updating vkontakte access token, error %s, method: %s, recursion count: %d" %
+                         (e, self.method, self.recursion_count))
         self.update_tokens()
         return self.repeat_call(*args, **kwargs)
 
     def handle_error_code_6(self, e, *args, **kwargs):
         # try access_token by another user
-        self.logger.info(
-            "Vkontakte error 'Too many requests per second' on method: %s, recursion count: %d" % (self.method, self.recursion_count))
+        self.logger.info("Vkontakte error 'Too many requests per second' on method: %s, recursion count: %d" % (
+            self.method, self.recursion_count))
         self.used_access_tokens += [self.api.token]
         return self.repeat_call(*args, **kwargs)
 
@@ -105,6 +106,14 @@ class VkontakteApi(ApiAbstractBase):
         return self.sleep_repeat_call(*args, **kwargs)
 
     def handle_error_code_501(self, e, *args, **kwargs):
+        # strange HTTP error appears sometimes
+        return self.sleep_repeat_call(*args, **kwargs)
+
+    def handle_error_code_502(self, e, *args, **kwargs):
+        # strange HTTP error appears sometimes
+        return self.sleep_repeat_call(*args, **kwargs)
+
+    def handle_error_code_504(self, e, *args, **kwargs):
         # strange HTTP error appears sometimes
         return self.sleep_repeat_call(*args, **kwargs)
 

@@ -3,10 +3,11 @@ import logging
 
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
-from django.db import models, transaction
+from django.db import models
 from m2m_history.fields import ManyToManyHistoryField
 from vkontakte_users.models import User
 
+from .decorators import memoize, atomic
 from . import fields
 from .models import VkontakteManager, VkontakteTimelineManager
 
@@ -14,11 +15,15 @@ from .models import VkontakteManager, VkontakteTimelineManager
 log = logging.getLogger('vkontakte_api')
 
 
+@memoize
 def get_or_create_group_or_user(remote_id):
+    from vkontakte_groups.models import Group
+    from vkontakte_users.models import User
+
     if remote_id > 0:
-        Model = ContentType.objects.get(app_label='vkontakte_users', model='user').model_class()
+        Model = User
     elif remote_id < 0:
-        Model = ContentType.objects.get(app_label='vkontakte_groups', model='group').model_class()
+        Model = Group
     else:
         raise ValueError("remote_id shouldn't be equal to 0")
 
@@ -153,7 +158,7 @@ class LikableModelMixin(models.Model):
     def likes_remote_type(self):
         raise NotImplementedError()
 
-    @transaction.commit_on_success
+    @atomic
     def fetch_likes(self, *args, **kwargs):
 
         kwargs['likes_type'] = self.likes_remote_type
