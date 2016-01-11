@@ -19,6 +19,8 @@ setup(
         'django-picklefield',
         'django-oauth-tokens>=0.5.0',
         'vkontakte',
+        'django-vkontakte-users>=0.8.1',
+        'django-m2m-history>=0.3.2',
         'simplejson',
         'beautifulsoup4',
     ],
