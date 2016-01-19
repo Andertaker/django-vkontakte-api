@@ -139,3 +139,33 @@ def api_call(method, *args, **kwargs):
     else:
         api = VkontakteApi()
         return api.call(method, *args, **kwargs)
+
+
+def api_recursive_call(method, *args, **kwargs):
+
+    if 'offset' not in kwargs:
+        kwargs['offset'] = 0
+    if 'count' not in kwargs:
+        kwargs['count'] = 100
+
+    response = {}
+    while True:
+        # print kwargs['offset']
+        r = api_call(method, *args, **kwargs)
+        kwargs['offset'] += kwargs['count']
+
+        if not response: # first call
+            response = r
+        else:
+            response['items'] += r['items']
+
+        if 'count' in response:
+            if len(response['items']) >= response['count']:
+                # print "items: %s, count: %s" % (len(response['items']), response['count'])
+                break
+        # not all method return count
+        if len(r['items']) == 0:
+            # print "0 items"
+            break
+
+    return response
