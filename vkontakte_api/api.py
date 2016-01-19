@@ -119,11 +119,23 @@ class VkontakteApi(ApiAbstractBase):
 
 
 
+class ApiCallError(Exception):
+     def __init__(self, value):
+         self.value = value
+     def __str__(self):
+        return repr(self.value)
+
+
+
 def api_call(method, *args, **kwargs):
+
     if method in NO_TOKEN_METHODS:
         url = SECURE_API_URL + method # 'https://api.vk.com/method/users.get'
         r = requests.get(url, params=kwargs)
-        return r.json()["response"]
+        if r.status_code == 200:
+            return r.json()["response"]
+        else:
+            raise ApiCallError(r.content)
     else:
         api = VkontakteApi()
         return api.call(method, *args, **kwargs)
